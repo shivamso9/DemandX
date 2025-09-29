@@ -1,0 +1,7 @@
+Flask
+Flask-Cors
+google-cloud-aiplatform
+pandas
+google-cloud-aiplatform
+openpyxl
+pytest

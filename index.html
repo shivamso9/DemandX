@@ -98,6 +98,10 @@
             }
             const response = await fetch(url, options);
             if (!response.ok) {
+                const errorData = await response.json().catch(() => null); 
+                if (errorData && errorData.error) {
+                    throw new Error(errorData.error);
+                }
                 let msg = `API Error (${response.status} ${response.statusText}).`;
                 if (response.status === 500) msg = `Backend Error (500): The server encountered an error. Check the terminal where \`backend.py\` is running for details.`;
                 throw new Error(msg);
