@@ -116,6 +116,8 @@
 
     async function handleValidation() {
         setStatus(1, 'running');
+        feedback1.innerHTML = ''; 
+        feedback1.classList.add('hidden'); 
         conversationHistory = [];
         const file = fileUpload.files[0];
         if (!file) {
