@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Garud - Agentic Plugin Factory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .stage { border-left: 3px solid #e5e7eb; transition: all 0.3s ease-in-out; }
+        .stage.active { border-left-color: #3b82f6; }
+        .stage.completed { border-left-color: #22c55e; }
+        .stage.failed { border-left-color: #ef4444; }
+        .code-block { background-color: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; position: relative; max-height: 400px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 0.875rem; white-space: pre-wrap; word-wrap: break-word; }
+        .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: #475569; color: #e2e8f0; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.8rem; opacity: 0.5; transition: opacity 0.2s; }
+        .code-block:hover .copy-btn { opacity: 1; }
+        .thinking-dots span { animation-name: blink; animation-duration: 1.4s; animation-iteration-count: infinite; animation-fill-mode: both; }
+        .thinking-dots span:nth-child(2) { animation-delay: .2s; }
+        .thinking-dots span:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0% { opacity: .2; } 20% { opacity: 1; } 100% { opacity: .2; } }
+        .chat-bubble { max-width: 85%; padding: 0.75rem 1rem; border-radius: 1rem; }
+        .chat-bubble.agent { background-color: #eef2ff; color: #312e81; border-bottom-left-radius: 0.25rem; }
+        .chat-bubble.user { background-color: #3b82f6; color: white; border-bottom-right-radius: 0.25rem; }
+        .flowchart-container { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+        .flowchart-node { background-color: #fff; border: 2px solid #6366f1; color: #4338ca; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-align: center; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); width: 80%; }
+        .flowchart-node.start-end { border-radius: 9999px; background-color: #818cf8; color: white; }
+        .flowchart-arrow { color: #9ca3af; font-size: 1.5rem; line-height: 1; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        /* Search bar styles */
+        #plugin-search-list { max-height: 200px; overflow-y: auto; }
+        #plugin-search-list div:hover { background-color: #f0f4ff; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-10">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Team Garud</h1>
+                <p class="text-lg text-gray-600 mt-2">o9 Agentic Plugin Factory</p>
+            </div>
+            <button id="reset-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition"><i class="fas fa-redo mr-2"></i>Reset Session</button>
+        </header>
+        <div class="space-y-8">
+            <div id="stage-1" class="stage p-6 rounded-lg bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-search-circle mr-3 text-2xl text-indigo-500"></i>Stage 1: Inspector Agent</h2>
+                    <div id="status-1" class="font-medium"></div>
+                </div>
+                <p class="text-gray-600 mt-2 ml-10">Validates the spec file and generates a plan for approval.</p>
+                <div id="content-1" class="mt-4 ml-10">
+                    <label for="file-upload" class="cursor-pointer inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-upload mr-2"></i>Upload `plugin_template.xlsx`</label>
+                    <input id="file-upload" type="file" class="hidden" accept=".xlsx,.xls">
+                    <p id="file-name" class="text-gray-500 mt-2"></p>
+                    <button id="validate-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition hidden"><i class="fas fa-play mr-2"></i>Start Validation</button>
+                    <div id="feedback-1" class="mt-4 p-4 rounded-lg hidden"></div>
+                </div>
+            </div>
+
+            <div id="stage-1a" class="stage p-6 rounded-lg bg-gray-50 opacity-50">
+                <h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-code-branch mr-3 text-2xl text-gray-400"></i>Stage 1a: Select Reference Plugin</h2>
+                <div id="status-1a" class="font-medium"></div>
+                <div id="content-1a" class="hidden mt-4 ml-10"></div>
+            </div>
+
+            <div id="stage-2" class="stage p-6 rounded-lg bg-gray-50 opacity-50"><h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-file-invoice mr-3 text-2xl text-gray-400"></i>Stage 2: Test Architect Agent</h2><div id="status-2" class="font-medium"></div><div id="content-2" class="hidden mt-4 ml-10"></div></div>
+            <div id="stage-3" class="stage p-6 rounded-lg bg-gray-50 opacity-50"><h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-cogs mr-3 text-2xl text-gray-400"></i>Stage 3: Coder Agent</h2><div id="status-3" class="font-medium"></div><div id="content-3" class="hidden mt-4 ml-10"></div></div>
+            <div id="stage-4" class="stage p-6 rounded-lg bg-gray-50 opacity-50"><h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-flag-checkered mr-3 text-2xl text-gray-400"></i>Stage 4: Reporter & Debugger Agents</h2><div id="status-4" class="font-medium"></div><div id="content-4" class="hidden mt-4 ml-10"></div></div>
+        </div>
+    </div>
+<script>
+    const getEl = (id) => document.getElementById(id);
+    const stages = { 1: getEl('stage-1'), '1a': getEl('stage-1a'), 2: getEl('stage-2'), 3: getEl('stage-3'), 4: getEl('stage-4') };
+    const statuses = { 1: getEl('status-1'), '1a': getEl('status-1a'), 2: getEl('status-2'), 3: getEl('status-3'), 4: getEl('status-4') };
+    const contents = { 1: getEl('content-1'), '1a': getEl('content-1a'), 2: getEl('content-2'), 3: getEl('content-3'), 4: getEl('content-4') };
+    const fileUpload = getEl('file-upload'), fileNameDisplay = getEl('file-name'), validateBtn = getEl('validate-btn'), feedback1 = getEl('feedback-1'), resetBtn = getEl('reset-btn');
+    
+    const API_BASE_URL = 'http://127.0.0.1:8080/api';
+    const GENERATE_URL = `${API_BASE_URL}/generate`;
+    const VALIDATE_URL = `${API_BASE_URL}/validate`;
+    const EXECUTE_URL = `${API_BASE_URL}/execute`;
+    const LIST_PLUGINS_URL = `${API_BASE_URL}/list_plugins`;
+
+    let conversationHistory = [], generatedCode = { test: null, plugin_repo: null, plugin_tenant: null };
+    let currentLogicPlan = "";
+    let selectedReferencePlugin = null;
+
+    async function callBackend(url, payload = {}, method = 'POST', isFileUpload = false) {
+        try {
+            const options = { method };
+            if (method === 'POST' && !isFileUpload) {
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify(payload);
+            } else if (isFileUpload) {
+                options.body = payload;
+            }
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                let msg = `API Error (${response.status} ${response.statusText}).`;
+                if (response.status === 500) msg = `Backend Error (500): The server encountered an error. Check the terminal where \`backend.py\` is running for details.`;
+                throw new Error(msg);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Backend call failed:", error);
+            if (error instanceof TypeError) return { error: `Error: **Connection to backend failed.** Please ensure the server is running and check the terminal for errors.` };
+            return { error: `Error: ${error.message}` };
+        }
+    }
+
+    async function handleValidation() {
+        setStatus(1, 'running');
+        conversationHistory = [];
+        const file = fileUpload.files[0];
+        if (!file) {
+            setStatus(1, 'failed');
+            feedback1.innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">Please select a file first.</div>`;
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await callBackend(VALIDATE_URL, formData, 'POST', true);
+        
+        if (response.error) {
+             setStatus(1, 'failed');
+             feedback1.classList.remove('hidden');
+             feedback1.innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">${response.error.replace(/\*\*/g, '<strong>')}</div>`;
+        } else if (response.text.startsWith('VALIDATION_FAIL:')) {
+            setStatus(1, 'failed');
+            conversationHistory.push({ role: 'agent', text: response.text.replace('VALIDATION_FAIL:', '').trim() });
+            renderInitialChatUI();
+        } else {
+            const logicSummary = response.text.replace('VALIDATION_SUCCESS:', '').trim();
+            conversationHistory.push({role: 'logic_summary', text: logicSummary});
+            runLogicUnderstandingStep(logicSummary);
+        }
+    }
+
+    function setStatus(stage, type) {
+        const statusEl = statuses[stage], stageEl = stages[stage];
+        stageEl.classList.remove('active', 'completed', 'failed');
+        const icons = { pending: '<i class="fas fa-clock mr-2"></i>Pending', running: '<div class="thinking-dots"><span>.</span><span>.</span><span>.</span></div><span class="ml-2">Thinking...</span>', success: '<i class="fas fa-check-circle mr-2"></i>Success', failed: '<i class="fas fa-times-circle mr-2"></i>Action Required' };
+        const colors = { pending: 'text-gray-500', running: 'text-blue-500', success: 'text-green-500', failed: 'text-red-500' };
+        if (type === 'active' || type === 'running') stageEl.classList.add('active');
+        if (type === 'success') stageEl.classList.add('completed');
+        if (type === 'failed') stageEl.classList.add('failed');
+        statusEl.innerHTML = `<div class="flex items-center font-medium ${colors[type]}">${icons[type]}</div>`;
+    }
+
+    function activateStage(stage) { 
+        stages[stage].classList.remove('opacity-50'); 
+        const icon = stages[stage].querySelector('h2 > i.fas');
+        if(icon) {
+            icon.classList.remove('text-gray-400');
+            icon.classList.add('text-indigo-500'); 
+        }
+        setStatus(stage, 'pending'); 
+    }
+    
+    async function runLogicUnderstandingStep(logicSummary) {
+        setStatus(1, 'running');
+        const prompt = `You are a Business Analyst Agent. Your task is to translate a technical business logic summary into a clear, human-readable pseudocode and a simple text-based flowchart.
+        Business Logic: "${logicSummary}"
+        **CRITICAL INSTRUCTIONS:**
+        1.  Start with a section marker \`### PSEUDOCODE ###\`.
+        2.  Create a "Pseudocode" section with numbered steps.
+        3.  Follow with a section marker \`### FLOWCHART ###\`.
+        4.  Create a "Flowchart" section using simple text and arrows. Each step MUST be on a new line, separated by ' -> '.
+        Example Flowchart:
+        [Start]
+         -> 
+        [Step 1: Do X]
+         -> 
+        [End]
+        5.  The entire output must be a single block of text. Do not output code.`;
+        
+        const response = await callBackend(GENERATE_URL, { prompt });
+        if (response.error) {
+            setStatus(1, 'failed');
+            feedback1.innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">${response.error}</div>`;
+        } else {
+            currentLogicPlan = response.text;
+            renderApprovalUI(currentLogicPlan);
+        }
+    }
+
+    function renderApprovalUI(planText) {
+        setStatus(1, 'failed'); // "Action Required"
+        feedback1.classList.remove('hidden');
+        
+        const pseudoCodeMatch = planText.match(/### PSEUDOCODE ###\s*([\s\S]*?)### FLOWCHART ###/);
+        const flowchartMatch = planText.match(/### FLOWCHART ###\s*([\s\S]*)/);
+
+        const pseudoCode = pseudoCodeMatch ? pseudoCodeMatch[1].trim() : "Could not generate pseudocode.";
+        let flowchartHTML = '<div class="text-gray-500">Could not generate flowchart.</div>';
+        if (flowchartMatch) {
+            const flowchartSteps = flowchartMatch[1].trim().split('->').map(s => s.trim()).filter(s => s);
+            flowchartHTML = '<div class="flowchart-container">';
+            flowchartSteps.forEach((step, index) => {
+                const isStartEnd = step.toLowerCase().includes('[start]') || step.toLowerCase().includes('[end]');
+                flowchartHTML += `<div class="flowchart-node ${isStartEnd ? 'start-end' : ''}">${step.replace(/\[|\]/g, '')}</div>`;
+                if (index < flowchartSteps.length - 1) {
+                    flowchartHTML += `<div class="flowchart-arrow"><i class="fas fa-arrow-down"></i></div>`;
+                }
+            });
+            flowchartHTML += '</div>';
+        }
+
+        feedback1.innerHTML = `
+            <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <h3 class="font-semibold text-lg text-indigo-800 mb-4"><i class="fas fa-lightbulb mr-2"></i>Agent's Understanding & Plan</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="font-semibold text-gray-700 mb-3 border-b pb-2">Pseudocode</h4>
+                        <pre class="text-sm whitespace-pre-wrap text-gray-600 leading-relaxed">${pseudoCode}</pre>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="font-semibold text-gray-700 mb-3 border-b pb-2">Flowchart</h4>
+                        ${flowchartHTML}
+                    </div>
+                </div>
+            </div>
+            <div id="approval-actions" class="flex items-center justify-end mt-4 space-x-3">
+                <button id="chat-refine-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-comments mr-2"></i>Chat to Refine</button>
+                <button id="reject-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-times mr-2"></i>Reject</button>
+                <button id="approve-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-check mr-2"></i>Approve & Proceed</button>
+            </div>
+            <div id="refinement-chat-ui" class="hidden mt-4"></div>
+        `;
+        getEl('approve-btn').addEventListener('click', handleApproval);
+        getEl('reject-btn').addEventListener('click', handleRejection);
+        getEl('chat-refine-btn').addEventListener('click', handleRefinementChat);
+    }
+    
+    // --- FIXED handleApproval function ---
+    function handleApproval() {
+        setStatus(1, 'success');
+        
+        // Find the specific plan content, excluding the action buttons.
+        const planContainer = getEl('feedback-1').querySelector('.p-4.bg-indigo-50');
+        
+        if (planContainer) {
+            // If the plan is found, replace the entire feedback area with the collapsible version.
+            feedback1.innerHTML = `
+                <details class="bg-white rounded-lg shadow">
+                    <summary class="cursor-pointer p-4 font-semibold text-gray-700 hover:bg-gray-50 flex justify-between items-center">
+                        <span><i class="fas fa-check-circle mr-2 text-green-500"></i>Approved Plan (Click to view)</span>
+                        <i class="fas fa-chevron-down transition-transform"></i>
+                    </summary>
+                    <div class="p-4 border-t">${planContainer.outerHTML}</div>
+                </details>
+            `;
+        } else {
+            // Fallback if the structure changes, just clear the buttons.
+            const approvalActions = getEl('approval-actions');
+            if(approvalActions) approvalActions.remove();
+        }
+
+        runStage1a_SelectReference();
+    }
+    
+    // --- NEW STAGE 1a ---
+    async function runStage1a_SelectReference() {
+        activateStage('1a');
+        setStatus('1a', 'running');
+        contents['1a'].classList.remove('hidden');
+        
+        const response = await callBackend(LIST_PLUGINS_URL, {}, 'GET');
+
+        if (response.error) {
+            setStatus('1a', 'failed');
+            contents['1a'].innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">Could not load reference plugins: ${response.error}</div>`;
+            return;
+        }
+
+        setStatus('1a', 'failed'); // Action Required from user
+        const plugins = response.plugins || [];
+        contents['1a'].innerHTML = `
+            <p class="text-gray-600 mb-4">Select a reference plugin to guide the Coder Agent. The new plugin will follow its structure and coding standards.</p>
+            <div class="relative">
+                <input type="text" id="plugin-search-input" class="w-full border-gray-300 rounded-lg shadow-sm p-2" placeholder="Search for a plugin...">
+                <div id="plugin-search-list" class="absolute z-10 w-full bg-white border rounded-lg mt-1 shadow-lg hidden">
+                    ${plugins.map(p => `<div class="p-2 cursor-pointer hover:bg-indigo-100" data-plugin-name="${p}">${p}</div>`).join('')}
+                </div>
+            </div>
+            <p id="selected-plugin-display" class="mt-4 font-semibold text-indigo-600"></p>
+            <button id="confirm-plugin-btn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition hidden"><i class="fas fa-arrow-right mr-2"></i>Confirm & Continue</button>
+        `;
+
+        const searchInput = getEl('plugin-search-input');
+        const searchList = getEl('plugin-search-list');
+        const display = getEl('selected-plugin-display');
+        const confirmBtn = getEl('confirm-plugin-btn');
+
+        searchInput.addEventListener('focus', () => searchList.classList.remove('hidden'));
+        
+        searchInput.addEventListener('keyup', () => {
+            const filter = searchInput.value.toLowerCase();
+            searchList.querySelectorAll('div').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+
+        searchList.querySelectorAll('div').forEach(item => {
+            item.addEventListener('click', () => {
+                selectedReferencePlugin = item.dataset.pluginName;
+                display.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i>Selected: <strong>${selectedReferencePlugin}</strong>`;
+                confirmBtn.classList.remove('hidden');
+                searchInput.value = selectedReferencePlugin;
+                searchList.classList.add('hidden');
+            });
+        });
+        
+        confirmBtn.addEventListener('click', () => {
+            setStatus('1a', 'success');
+            runStage2_TestArchitect();
+        });
+    }
+
+    // --- RENAMED and modified runStage2 to runStage2_TestArchitect ---
+    async function runStage2_TestArchitect() {
+        activateStage(2);
+        setStatus(2, 'running');
+        // This is a placeholder for the full test plan approval logic from previous versions
+        // On approval of the test plan, call runStage3_Coder()
+        const logicSummary = conversationHistory.find(m => m.role === 'logic_summary')?.text || "No specific logic defined.";
+        const prompt = `You are a Test Architect Agent. Based on the final, approved logic ("${logicSummary}"), generate a complete and runnable python pytest file.
+        **CRITICAL INSTRUCTIONS:**
+        1.  **Use the Repo/Tenant Structure:** The test file MUST be designed to test the Tenant/Repo architecture. It will likely need to import from a generic 'helpers.plugin_module' where the Repo file will be placed.
+        2.  **Full Implementation:** Create concrete pandas DataFrames for inputs and expected outputs. Do not use placeholders.
+        3.  **Raw Code Only:** Output ONLY raw, valid Python code. No explanations.
+        4.  **Naming:** All test functions must start with \`test_\`. Include at least 2 distinct test cases.`;
+        
+        const response = await callBackend(GENERATE_URL, { prompt });
+        contents[2].classList.remove('hidden');
+        if(response.error) {
+            setStatus(2, 'failed');
+            contents[2].innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">${response.error.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>`;
+        } else {
+            const code = response.text.replace(/```(python|py|bash|text)?/g, '').replace(/```/g, '');
+            generatedCode['test'] = code;
+            contents[2].innerHTML = `<pre class="code-block"><code></code></pre><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+            contents[2].querySelector('code').textContent = code;
+            setStatus(2, 'success');
+            runStage3_Coder();
+        }
+    }
+    
+    // --- RENAMED and modified runStage3 to runStage3_Coder ---
+    async function runStage3_Coder() {
+        activateStage(3);
+        setStatus(3, 'running');
+        contents[3].classList.remove('hidden');
+        
+        const logicSummary = conversationHistory.find(m => m.role === 'logic_summary')?.text || "No specific logic defined.";
+        const newPluginName = fileNameDisplay.textContent.replace(/\.xlsx?$/, '') || 'NewPlugin';
+
+        const prompt = `You are a Coder Agent. Your task is to generate two Python files (a Tenant file and a Repo file) based on the provided business logic and a reference plugin.
+
+        **CRITICAL INSTRUCTIONS:**
+        1.  **Analyze the Reference:** You will be given the code for a reference Tenant file and a reference Repo file. You MUST follow their structure, boilerplate, imports, and function definitions precisely.
+        2.  **Generate Two Files:** Your output must contain two distinct, clearly marked sections: one for the Tenant file and one for the Repo file.
+        3.  **Tenant File Logic:** The Tenant file is the entry point. It handles reading data using \`O9DataLake.get()\`, calling the main function in the Repo file, and writing the output with \`O9DataLake.put()\`. It should import the main function from a generic module path like \`helpers.${newPluginName}\`.
+        4.  **Repo File Logic:** The Repo file contains the core business logic. Implement the user's business plan inside the \`main\` or equivalent function.
+        5.  **Coding Standards:** The generated code must be clean, readable, and compliant with isort and flake8 standards.
+        6.  **Use Markers:** Start the Tenant file code with \`### TENANT FILE ###\` and the Repo file code with \`### REPO FILE ###\`.
+
+        **Business Logic to Implement:**
+        ---
+        ${logicSummary}
+        ---
+        `;
+        
+        const response = await callBackend(GENERATE_URL, { 
+            prompt,
+            reference_plugin: selectedReferencePlugin
+        });
+
+        if (response.error) {
+            setStatus(3, 'failed');
+            contents[3].innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">${response.error}</div>`;
+        } else {
+            const tenantMatch = response.text.match(/### TENANT FILE ###\s*([\s\S]*?)### REPO FILE ###/);
+            const repoMatch = response.text.match(/### REPO FILE ###\s*([\s\S]*)/);
+            
+            generatedCode.plugin_tenant = tenantMatch ? tenantMatch[1].trim() : " # Could not generate Tenant file.";
+            generatedCode.plugin_repo = repoMatch ? repoMatch[1].trim() : " # Could not generate Repo file.";
+
+            contents[3].innerHTML = `
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-semibold mb-2">Tenant Plugin File</h4>
+                        <pre class="code-block"><code>${generatedCode.plugin_tenant.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">Repo Plugin File</h4>
+                        <pre class="code-block"><code>${generatedCode.plugin_repo.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                    </div>
+                </div>`;
+            setStatus(3, 'success');
+            runStage4();
+        }
+    }
+
+    // --- MODIFIED runStage4 ---
+    async function runStage4() {
+        activateStage(4);
+        setStatus(4, 'running');
+        contents[4].classList.remove('hidden');
+        
+        if (!generatedCode.test || !generatedCode.plugin_repo || !generatedCode.plugin_tenant) {
+            setStatus(4, 'failed');
+            contents[4].innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold">Error: Cannot verify because code generation failed in a previous step.</div>`;
+            return;
+        }
+
+        contents[4].innerHTML = `<p class="font-semibold mb-2">Running live verification...</p><pre class="code-block bg-gray-800"><code>Executing pytest on the generated code...</code></pre>`;
+        const executionLogEl = contents[4].querySelector('code');
+
+        const logicSummary = conversationHistory.find(m => m.role === 'logic_summary')?.text || "";
+        const newPluginName = fileNameDisplay.textContent.replace(/\.xlsx?$/, '') || 'NewPlugin';
+
+        const executionResult = await callBackend(EXECUTE_URL, { 
+            test_code: generatedCode.test, 
+            plugin_repo_code: generatedCode.plugin_repo,
+            plugin_tenant_code: generatedCode.plugin_tenant,
+            logic_summary: logicSummary,
+            plugin_name: newPluginName
+        });
+        
+        if (executionResult.error) {
+            setStatus(4, 'failed');
+            executionLogEl.textContent = `EXECUTION FAILED:\n${executionResult.error}`;
+            return;
+        }
+
+        const { passed, total, saved_path } = executionResult;
+        
+        const finalReportHtml = `<p class="font-semibold mb-2 text-indigo-600">Final Summary Report:</p>
+            <div class="p-4 bg-indigo-50 rounded-lg">
+                The agent process has completed.
+                <br><strong>Final Test Results:</strong> ${passed} / ${total} passed.
+                <br>The plugin files have been saved to the server.
+            </div>
+            <hr class="my-4">
+            <p class="font-semibold mb-2 text-green-600"><i class="fas fa-folder-open mr-2"></i>Files Saved</p>
+            <p class="text-gray-700">Your plugin and test files have been successfully saved to the following folder on the server:</p>
+            <pre class="code-block bg-gray-800 mt-2"><code>${saved_path}</code></pre>
+            <hr class="my-4">
+            <p class="font-semibold mb-2">Full Execution Log:</p>
+            <pre class="code-block bg-gray-800"><code>${executionResult.output}</code></pre>`;
+            
+        contents[4].innerHTML = finalReportHtml;
+        setStatus(4, executionResult.success ? 'success' : 'failed');
+    }
+
+
+    function copyCode(button) { 
+        const code = button.previousElementSibling.querySelector('code').innerText;
+        navigator.clipboard.writeText(code).then(() => {
+            button.textContent = 'Copied!';
+            setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+        });
+    }
+
+    function handleRejection() {
+        setStatus(1, 'failed');
+        feedback1.innerHTML = `<div class="text-red-700 p-4 bg-red-100 rounded-lg font-semibold"><i class="fas fa-exclamation-triangle mr-2"></i>Process stopped. Please revise your \`plugin_template.xlsx\` to clarify the business logic, then click 'Reset Session' to try again.</div>`;
+    }
+    
+    function resetDemo() { 
+        conversationHistory = [];
+        generatedCode = { test: null, plugin_repo: null, plugin_tenant: null };
+        currentLogicPlan = "";
+        selectedReferencePlugin = null;
+        for (const stageId in stages) {
+            setStatus(stageId, 'pending');
+            const icon = stages[stageId].querySelector('h2 > i.fas');
+            if (stageId !== '1') {
+                stages[stageId].classList.add('opacity-50');
+                contents[stageId].classList.add('hidden');
+                if(icon) icon.classList.add('text-gray-400');
+            } else {
+                if(icon) icon.classList.remove('text-gray-400');
+            }
+        }
+        feedback1.classList.add('hidden');
+        fileUpload.value = '';
+        fileNameDisplay.textContent = '';
+        validateBtn.classList.add('hidden');
+        setStatus(1, 'pending');
+    }
+
+    // --- Other chat functions (renderInitialChatUI, etc.) can be added here if needed ---
+
+    fileUpload.addEventListener('change', (e) => { if (e.target.files[0]) { fileNameDisplay.textContent = e.target.files[0].name; validateBtn.classList.remove('hidden'); } });
+    validateBtn.addEventListener('click', handleValidation);
+    resetBtn.addEventListener('click', resetDemo);
+    
+    resetDemo();
+
+</script>
+</body>
+</html>
+
