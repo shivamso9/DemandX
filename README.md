@@ -41,30 +41,34 @@
 
 ---
 
-## 📁 Project Structure\
+## 📁 Project Structure
+
+~~~plaintext
 Flaskapp/
-├── run.py # Entry point for the Flask app
-├── config.py # Configuration settings
-├── requirements.txt # Project dependencies
-├── .env # (Optional) Environment variables
+├── run.py                   # Entry point for the Flask app
+├── config.py                # Configuration settings
+├── requirements.txt         # Project dependencies
+├── .env                     # (Optional) Environment variables
 ├── app/
-│ ├── init.py # Flask app factory
-│ ├── routes.py # API routes
-│ ├── utils.py # Utility functions
-│ ├── prompts.py # AI prompts used by agents
-│ ├── static/ # CSS, JS, and images
-│ ├── templates/ # HTML templates (Jinja2)
-│ └── services/
-│ ├── vertex_service.py # Interface with Vertex AI
-│ ├── file_service.py # File handling logic
-│ └── agents/ # Agent implementations
-│ ├── validator_agent.py
-│ ├── generator_agent.py
-│ ├── debugger_agent.py
-│ └── git_agent.py
-├── generated_plugins/ # Output directory for completed plugins
-├── helpers/ # Reference or example plugins
-└── plugin_scripts/ # Tenant-specific plugin scripts
+│   ├── __init__.py          # Flask app factory
+│   ├── routes.py            # API routes
+│   ├── utils.py             # Utility functions
+│   ├── prompts.py           # AI prompts used by agents
+│   ├── static/              # CSS, JS, and images
+│   ├── templates/           # HTML templates (Jinja2)
+│   └── services/
+│       ├── vertex_service.py    # Interface with Vertex AI
+│       ├── file_service.py      # File handling logic
+│       └── agents/              # Agent implementations
+│           ├── validator_agent.py
+│           ├── generator_agent.py
+│           ├── debugger_agent.py
+│           └── git_agent.py
+├── generated_plugins/       # Output directory for completed plugins
+├── helpers/                 # Reference or example plugins
+└── plugin_scripts/          # Tenant-specific plugin scripts
+~~~
+
 
 
 ## ⚙️ Setup and Installation
