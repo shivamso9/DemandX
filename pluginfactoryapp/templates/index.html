@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Garud - Agentic Plugin Factory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .stage { border-left: 3px solid #e5e7eb; transition: all 0.3s ease-in-out; }
+        .stage.active { border-left-color: #3b82f6; }
+        .stage.completed { border-left-color: #22c55e; }
+        .stage.failed { border-left-color: #ef4444; }
+        .code-block { background-color: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; position: relative; max-height: 400px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 0.875rem; white-space: pre-wrap; word-wrap: break-word; }
+        .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: #475569; color: #e2e8f0; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.8rem; opacity: 0.5; transition: opacity 0.2s; }
+        .code-block:hover .copy-btn { opacity: 1; }
+        .thinking-dots span { animation-name: blink; animation-duration: 1.4s; animation-iteration-count: infinite; animation-fill-mode: both; }
+        .thinking-dots span:nth-child(2) { animation-delay: .2s; }
+        .thinking-dots span:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0% { opacity: .2; } 20% { opacity: 1; } 100% { opacity: .2; } }
+        .chat-container { display: flex; flex-direction: column; height: 300px; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #fff; margin-top: 1rem; }
+        .chat-history { flex-grow: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .chat-message { max-width: 85%; padding: 0.5rem 0.75rem; border-radius: 1rem; }
+        .chat-message.agent { background-color: #eef2ff; color: #312e81; align-self: flex-start; border-bottom-left-radius: 0.25rem; }
+        .chat-message.user { background-color: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 0.25rem; }
+        .chat-input { display: flex; border-top: 1px solid #e5e7eb; }
+        .chat-input input { flex-grow: 1; border: none; padding: 0.75rem 1rem; outline: none; border-bottom-left-radius: 0.5rem; }
+        .chat-input button { padding: 0.75rem 1rem; background-color: #475569; color: #e2e8f0; border: none; cursor: pointer; border-bottom-right-radius: 0.5rem; }
+        .mermaid { text-align: center; margin-top: 1rem; width: 100%; }
+        .mermaid svg { max-width: 100% !important; width: 100%; height: auto; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] summary .fa-chevron-down { transform: rotate(180deg); }
+        #plugin-search-list { max-height: 200px; overflow-y: auto; }
+        #plugin-search-list div:hover { background-color: #f0f4ff; }
+        .test-case-item { transition: background-color 0.2s; }
+        .test-case-item:hover { background-color: #f9fafb; }
+        [contenteditable]:focus { outline: 2px solid #3b82f6; background-color: white; border-radius: 2px; padding-left: 4px; padding-right: 4px; }
+        .fa-spin { animation: fa-spin 2s infinite linear; }
+        @keyframes fa-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-10">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Team Garud</h1>
+                <p class="text-lg text-gray-600 mt-2">o9 Agentic Plugin Factory</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-medium text-gray-600">AutoMode</span>
+                    <label for="automode-toggle" class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" id="automode-toggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <button id="reset-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition"><i class="fas fa-redo mr-2"></i>Reset Session</button>
+            </div>
+        </header>
+        <div class="space-y-8">
+            <details id="stage-1" class="stage p-6 rounded-lg bg-gray-50" open>
+                <summary class="flex items-center justify-between cursor-pointer">
+                    <h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-search-circle mr-3 text-2xl text-indigo-500"></i>Stage 1: Inspector Agent</h2>
+                    <div class="flex items-center">
+                        <div id="status-1" class="font-medium mr-4"></div>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+                    </div>
+                </summary>
+                <p class="text-gray-600 mt-2 ml-10">Validates the spec file and generates a plan for approval.</p>
+                <div id="content-1" class="mt-4 ml-10">
+                    <label for="file-upload" class="cursor-pointer inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-upload mr-2"></i>Upload `plugin_template.xlsx`</label>
+                    <input id="file-upload" type="file" class="hidden" accept=".xlsx,.xls">
+                    <p id="file-name" class="text-gray-500 mt-2"></p>
+                    <button id="validate-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition hidden"><i class="fas fa-play mr-2"></i>Start Validation</button>
+                    <div id="feedback-1" class="mt-4 p-4 rounded-lg hidden"></div>
+                </div>
+            </details>
+
+            <details id="stage-1a" class="stage p-6 rounded-lg bg-gray-50 opacity-50">
+                <summary class="flex items-center justify-between cursor-pointer">
+                    <h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-code-branch mr-3 text-2xl text-gray-400"></i>Stage 1a: Select Reference Plugin</h2>
+                    <div class="flex items-center">
+                        <div id="status-1a" class="font-medium mr-4"></div>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+                    </div>
+                </summary>
+                <div id="content-1a" class="hidden mt-4 ml-10"></div>
+            </details>
+
+            <details id="stage-2" class="stage p-6 rounded-lg bg-gray-50 opacity-50">
+                <summary class="flex items-center justify-between cursor-pointer">
+                    <h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-file-invoice mr-3 text-2xl text-gray-400"></i>Stage 2: Test Architect Agent</h2>
+                    <div class="flex items-center">
+                        <div id="status-2" class="font-medium mr-4"></div>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+                    </div>
+                </summary>
+                <div id="content-2" class="hidden mt-4 ml-10"></div>
+            </details>
+
+            <details id="stage-3" class="stage p-6 rounded-lg bg-gray-50 opacity-50">
+                <summary class="flex items-center justify-between cursor-pointer">
+                    <h2 class="text-xl font-semibold text-gray-700 flex items-center"><i class="fas fa-cogs mr-3 text-2xl text-gray-400"></i>Stage 3: Coder & Debugger Agents</h2>
+                    <div class="flex items-center">
+                        <div id="status-3" class="font-medium mr-4"></div>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+                    </div>
+                </summary>
+                <div id="content-3" class="hidden mt-4 ml-10"></div>
+            </details>
+        </div>
+    </div>
+    <script src="static/js/script.js" defer></script>
+</body>
+</html>
