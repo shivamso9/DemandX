@@ -44,7 +44,7 @@
 ## 📁 Project Structure
 
 ~~~plaintext
-Flaskapp/
+DemandX/
 ├── run.py                   # Entry point for the Flask app
 ├── config.py                # Configuration settings
 ├── requirements.txt         # Project dependencies
@@ -78,8 +78,8 @@ Follow these steps to set up the project on your local machine.
 1. **Clone the Repository**
 
    ```bash
-   git clone <your-repository-url>
-   cd Flaskapp
+   git clone https://github.com/shivamso9/DemandX.git
+   cd DemandX
    ```
 
 2. **Create Virtual Environment**
