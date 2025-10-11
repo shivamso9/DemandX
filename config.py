@@ -14,6 +14,7 @@ MODEL_NAME = os.getenv("MODEL_NAME")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR")
 REFERENCE_PLUGIN_DIR = os.getenv("REFERENCE_PLUGIN_DIR")
 TENANT_PLUGIN_DIR = os.getenv("TENANT_PLUGIN_DIR")
+TEST_PLAN_DIR = os.getenv("TEST_PLAN_DIR")
 
 # --- Git Configuration ---
 GIT_REPO_PATH = os.getenv("GIT_REPO_PATH")

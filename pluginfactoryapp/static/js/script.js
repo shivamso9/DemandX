@@ -14,6 +14,8 @@ let currentLogicPlan = "";
 let selectedReferencePlugin = null;
 let proposedTestCases = [];
 let parsedInputSchemas = null;
+let extractedPluginName = null;
+let customTestCode = null; // <-- ADDED: To store custom test file content
 let testsToExclude = new Set();
 
 const autoModeToggle = getEl('automode-toggle');
@@ -166,7 +168,7 @@ async function handleValidation() {
     }
 
     parsedInputSchemas = response.parsed_schemas;
-    extractedPluginName = response.plugin_name; // <-- ADDED: Capture the plugin name
+    extractedPluginName = response.plugin_name; 
     console.log(`Plugin name from Excel: ${extractedPluginName}`);
     const responseText = response.text || "";
 
@@ -320,7 +322,7 @@ async function runStage1a_SelectReference() {
         contents['1a'].innerHTML = `<p class="text-indigo-600"><i class="fas fa-robot mr-2"></i>AutoMode selected reference: <strong>${selectedReferencePlugin}</strong>. Proceeding...</p>`;
         setStatus('1a', 'success');
         stages['1a'].open = false;
-        runStage2_TestArchitect();
+        checkAndLoadExistingTestPlan();
         return; 
     }
 
@@ -366,8 +368,39 @@ async function runStage1a_SelectReference() {
     confirmBtn.addEventListener('click', () => {
         setStatus('1a', 'success');
         stages['1a'].open = false;
-        runStage2_TestArchitect();
+        checkAndLoadExistingTestPlan();
     });
+}
+
+async function checkAndLoadExistingTestPlan() {
+    activateStage(2);
+    setStatus(2, 'running');
+    
+    // Use GET method for retrieving data
+    const response = await callBackend(`${API_BASE_URL}/get_test_plan/${extractedPluginName}`, {}, 'GET');
+
+    if (response.status === 'found') {
+        setStatus(2, 'failed'); // Action Required
+        contents[2].innerHTML = `
+            <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                <h3 class="font-semibold text-lg text-indigo-800 mb-2"><i class="fas fa-history mr-2"></i>Existing Test Plan Found</h3>
+                <p class="text-gray-600 mb-4">We found a previously saved test plan for <strong>${extractedPluginName}</strong>. What would you like to do?</p>
+                <div class="flex items-center space-x-4">
+                    <button id="reuse-plan-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-recycle mr-2"></i>Reuse Existing Plan</button>
+                    <button id="generate-new-plan-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-magic mr-2"></i>Generate New Plan</button>
+                </div>
+            </div>`;
+
+        getEl('reuse-plan-btn').addEventListener('click', () => {
+            proposedTestCases = response.plan;
+            proposedTestCases.forEach(tc => tc.checked = true); // Ensure all are checked by default
+            renderTestSelectionUI();
+        });
+        getEl('generate-new-plan-btn').addEventListener('click', runStage2_TestArchitect);
+    } else {
+        // No plan found, proceed to generate a new one
+        runStage2_TestArchitect();
+    }
 }
 
 async function runStage2_TestArchitect() {
@@ -394,18 +427,15 @@ async function runStage2_TestArchitect() {
         setStatus(2, 'failed', response.error);
         return;
     }
-
-    // FIX: This function now ensures the UI is always rendered before proceeding, fixing the AutoMode bug.
+    
     const parseAndProceed = (jsonString) => {
         proposedTestCases = JSON.parse(jsonString);
         proposedTestCases.forEach(tc => tc.checked = true);
         
-        // Always render the UI structure first so containers exist.
         renderTestSelectionUI(isAutoMode);
 
         if (isAutoMode) {
             console.log("AutoMode: UI rendered, now auto-generating all proposed tests.");
-            // Use a short timeout to allow the DOM to update before the next step.
             setTimeout(handleGenerateSelectedTests, 100);
         }
     };
@@ -443,7 +473,6 @@ function updateTestSelectionState(index, isChecked) {
     }
 }
 
-// FIX: This function now accepts a flag to prevent setting the status to 'failed' in AutoMode.
 function renderTestSelectionUI(isAuto = false) {
     if (!isAuto) {
         setStatus(2, 'failed'); 
@@ -534,6 +563,67 @@ function addNewTestCase() {
     renderTestSelectionUI();
 }
 
+function exportTestResultsToCSV(attemptDetails, pluginName) {
+    const lastAttempt = attemptDetails[attemptDetails.length - 1];
+    if (!lastAttempt) return;
+
+    // Helper to format data for CSV cells
+    const formatCell = (data) => {
+        if (!data) return '""';
+        // Escape double quotes by doubling them and wrap everything in double quotes
+        const str = String(data).replace(/"/g, '""');
+        return `"${str}"`;
+    };
+
+    let csvContent = "";
+    // --- MODIFIED: New headers ---
+    const headers = [
+        "Test Name", "Category", "Description (The 'Why')", "Status", 
+        "Input Data", "Expected Output", "Result / Failure Details"
+    ];
+    csvContent += headers.join(",") + "\r\n";
+
+    const rows = [];
+    lastAttempt.passed.forEach(test => {
+        const originalTest = proposedTestCases.find(tc => tc.name === test.name.split('[')[0]);
+        const category = originalTest ? originalTest.category : 'N/A';
+        rows.push([
+            formatCell(test.name),
+            formatCell(category),
+            formatCell(test.description),
+            formatCell("Passed"),
+            formatCell(test.input_data),
+            formatCell(test.expected_data),
+            formatCell("Actual output matched expected output.")
+        ].join(","));
+    });
+
+    lastAttempt.failed.forEach(test => {
+        const originalTest = proposedTestCases.find(tc => tc.name === test.name.split('[')[0]);
+        const category = originalTest ? originalTest.category : 'N/A';
+        rows.push([
+            formatCell(test.name),
+            formatCell(category),
+            formatCell(test.description),
+            formatCell("Failed"),
+            formatCell(test.input_data),
+            formatCell(test.expected_data),
+            formatCell(test.reason) // The detailed failure reason
+        ].join(","));
+    });
+
+    csvContent += rows.join("\r\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${pluginName}_Release_Report_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 async function handleGenerateSelectedTests() {
     const selectedTests = isAutoMode ? proposedTestCases : proposedTestCases.filter(tc => tc.checked);
 
@@ -542,39 +632,29 @@ async function handleGenerateSelectedTests() {
         return;
     }
 
+    // Save the plan as before
+    if (extractedPluginName) {
+        await callBackend(`${API_BASE_URL}/save_test_plan`, {
+            plugin_name: extractedPluginName,
+            test_plan: proposedTestCases
+        });
+        console.log(`Test plan for ${extractedPluginName} saved.`);
+    }
+
     setStatus(2, 'running');
     
-    const loadingMessage = document.createElement('div');
-    loadingMessage.id = 'stage2-loading-message';
-    loadingMessage.innerHTML = `<div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p class="font-semibold text-blue-800"><i class="fas fa-robot fa-spin mr-2"></i>The Test Architect Agent is now writing the complete pytest code.</p>
-        <p class="text-blue-700 mt-2">This is a complex task and may take a few mins</p>
-    </div>`;
+    // ... (UI loading message code remains the same) ...
     
-    const codeContainer = getEl('generated-code-container');
-    if (codeContainer) codeContainer.innerHTML = '';
-    
-    const testPlanContainer = getEl('test-plan-container');
-    if (testPlanContainer) testPlanContainer.style.display = 'none';
-    
-    contents[2].prepend(loadingMessage);
-    
-    const testDescriptions = selectedTests.map(t => `- ${t.name}: ${t.description}`).join('\n');
+    // MODIFICATION: Call the new chunked endpoint with a different payload
+    const payload = {
+        logic_summary: currentLogicPlan,
+        test_cases: selectedTests
+    };
 
-    const prompt = `You are an expert Python developer specializing in pytest. Your task is to write a single, complete, and runnable pytest file.
-    Business Logic Summary: "${currentLogicPlan}"
-    Selected Test Cases to Implement: ${testDescriptions}
-    **CRITICAL OUTPUT REQUIREMENTS:**
-    1.  **Import:** The test file MUST import the function to be tested (e.g., \`main\`) from \`helpers.plugin_module\`.
-    2.  **Function Call:** The test MUST call the main function by unpacking a dictionary of inputs, like this: \`results = main(**inputs)\`. The keys of the dictionary must match the argument names of the main function.
-    3.  **Data:** Embed all input data directly within the test file as multi-line CSV strings, loaded into pandas DataFrames using \`io.StringIO\` and collected into an \`inputs\` dictionary.
-    4.  **Code Only:** Output ONLY the raw, valid Python code. Do not include any explanations or markdown formatting outside of the code itself.`;
+    // Note the new URL: /api/generate_test_file
+    const response = await callBackend(`${API_BASE_URL}/generate_test_file`, payload);
 
-    const response = await callBackend(`${API_BASE_URL}/generate`, { prompt });
-
-    getEl('stage2-loading-message')?.remove();
-    if (testPlanContainer) testPlanContainer.style.display = 'block';
-
+    // ... (rest of the function remains the same, handling the response) ...
 
     if (response.error) {
         setStatus(2, 'failed', response.error);
@@ -622,19 +702,45 @@ function displayGeneratedTestCode(code) {
     const codeContainer = getEl('generated-code-container');
     codeContainer.innerHTML = `
         <h3 class="font-semibold text-xl text-gray-800 mb-2">Generated Pytest File</h3>
-        <p class="text-sm text-gray-600 mb-2">Review the generated test code. If you edit the test plan above, click its "Generate Selected Tests" button again to update this code.</p>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i></button>
-            <code class="language-python">${escapeHtml(code)}</code>
+        <p class="text-sm text-gray-600 mb-2">You can now edit the generated test code directly below.</p>
+        <textarea id="generated-test-code-editor" class="w-full h-96 font-mono text-sm border rounded-lg p-2 bg-gray-900 text-gray-200">${escapeHtml(code)}</textarea>
+
+        <div class="mt-6 pt-6 border-t">
+             <h3 class="font-semibold text-xl text-gray-800 mb-2">Upload Additional Pytest File (Optional)</h3>
+             <p class="text-sm text-gray-600 mb-2">You can upload an additional file with your own pytest test cases. It will be executed alongside the generated tests.</p>
+             <div class="flex items-center space-x-4">
+                 <label for="custom-test-upload" class="cursor-pointer inline-block bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition"><i class="fas fa-upload mr-2"></i>Choose File</label>
+                 <input id="custom-test-upload" type="file" class="hidden" accept=".py">
+                 <p id="custom-test-filename" class="text-gray-600 font-semibold"></p>
+            </div>
         </div>
-        <div class="flex justify-end mt-4">
+
+        <div class="flex justify-end mt-6">
             <button id="approve-tests-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
                 Approve & Proceed to Coder Agent <i class="fas fa-arrow-right ml-2"></i>
             </button>
         </div>
     `;
 
+    getEl('custom-test-upload').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            customTestCode = null;
+            getEl('custom-test-filename').textContent = '';
+            return;
+        }
+        getEl('custom-test-filename').textContent = `✅ ${file.name}`;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            customTestCode = e.target.result;
+            console.log("Custom test file loaded.");
+        };
+        reader.readAsText(file);
+    });
+
     getEl('approve-tests-btn').addEventListener('click', () => {
+        // Update the generated code with any edits before proceeding
+        generatedCode.test = getEl('generated-test-code-editor').value;
         stages[2].open = false;
         runStage3_Coder();
     });
@@ -724,6 +830,7 @@ async function generateAndTestCode() {
 
     const executePayload = {
         test_code: generatedCode.test,
+        custom_test_code: customTestCode, // <-- ADDED: Send custom test code
         plugin_repo_code: plugin_repo,
         plugin_tenant_code: plugin_tenant,
         logic_summary: currentLogicPlan,
@@ -785,6 +892,7 @@ async function handleRerunDebugger() {
 
     const executePayload = {
         test_code: modifiedTestCode,
+        custom_test_code: customTestCode, // <-- ADDED: Also send on rerun
         plugin_repo_code: generatedCode.plugin_repo,
         plugin_tenant_code: generatedCode.plugin_tenant,
         logic_summary: currentLogicPlan,
@@ -902,6 +1010,12 @@ function displayFinalReport(response) {
     const summaryColor = success ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500';
     const summaryIcon = success ? '<i class="fas fa-check-circle text-green-600 mr-3"></i>' : '<i class="fas fa-times-circle text-red-600 mr-3"></i>';
     const summaryText = success ? 'All Tests Passed!' : `Tests Failed After ${attempt_details.length} Attempt(s).`;
+
+    const exportButtonHTML = `
+        <button id="export-csv-btn" class="text-sm bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-semibold py-1 px-3 rounded-lg transition-colors ml-auto">
+            <i class="fas fa-file-csv mr-2"></i>Export Results to CSV
+        </button>
+    `;
 
     const attemptsHTML = attempt_details.map((attempt, index) => {
         const attemptSuccess = attempt.failed.length === 0;
@@ -1033,7 +1147,10 @@ function displayFinalReport(response) {
 
     contents[3].innerHTML = `
         <div class="p-4 rounded-lg border-l-4 ${summaryColor} mb-6">
-            <h3 class="font-bold text-lg flex items-center">${summaryIcon}${summaryText}</h3>
+            <div class="flex items-center">
+                <h3 class="font-bold text-lg flex items-center">${summaryIcon}${summaryText}</h3>
+                ${exportButtonHTML}
+            </div>
             <div class="flex space-x-6 mt-2">
                 <div class="text-green-700"><strong>${passed}</strong> Passed</div>
                 <div class="text-red-700"><strong>${failed}</strong> Failed</div>
@@ -1046,6 +1163,11 @@ function displayFinalReport(response) {
         ${finalCodeSectionHTML}
         ${finalSectionHTML}
     `;
+
+    getEl('export-csv-btn')?.addEventListener('click', () => {
+        const pluginName = extractedPluginName || 'GeneratedPlugin';
+        exportTestResultsToCSV(response.attempt_details, pluginName);
+    });
 
     if (success) {
         getEl('push-to-git-btn')?.addEventListener('click', handlePushToGit);

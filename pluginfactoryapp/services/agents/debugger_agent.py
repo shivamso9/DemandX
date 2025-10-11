@@ -9,12 +9,14 @@ import re
 from flask import current_app
 from ... import prompts
 from .. import vertex_service
-from ...utils import clean_code_output, parse_test_results
+from ...utils import clean_code_output, parse_test_results, extract_test_data_from_code 
 
-def execute_and_debug_code(test_code, repo_code, tenant_code, proposed_test_cases, logic_summary):
+# --- FIX: The function signature is updated to accept the new argument ---
+def execute_and_debug_code(test_code, repo_code, tenant_code, proposed_test_cases, logic_summary, custom_test_code=None):
     """
     Executes tests in a temporary directory and enters a debugging loop
     if they fail, using an AI model to propose fixes.
+    Includes an optional custom test file.
     """
     temp_dir = tempfile.mkdtemp()
     try:
@@ -32,24 +34,32 @@ def execute_and_debug_code(test_code, repo_code, tenant_code, proposed_test_case
         attempt_details = []
         last_result = {}
 
+        full_test_code_for_parsing = current_test_code + "\n" + (custom_test_code or "")
+        test_data_map = extract_test_data_from_code(full_test_code_for_parsing)
+
         for attempt in range(max_attempts):
             # Setup files for the current attempt
             helpers_dir = os.path.join(temp_dir, "helpers")
             os.makedirs(helpers_dir, exist_ok=True)
             with open(os.path.join(helpers_dir, "__init__.py"), "w") as f: f.write("")
             with open(os.path.join(temp_dir, "test_plugin.py"), "w") as f: f.write(current_test_code)
+            
+            # Write the custom test file if it exists
+            if custom_test_code:
+                with open(os.path.join(temp_dir, "test_custom.py"), "w") as f:
+                    f.write(custom_test_code)
+            
             with open(os.path.join(helpers_dir, "plugin_module.py"), "w") as f: f.write(current_repo_code)
             with open(os.path.join(temp_dir, "plugin_tenant.py"), "w") as f: f.write(current_tenant_code)
 
-            # Run pytest
-            result = subprocess.run([pytest_path, "-v", "test_plugin.py"], cwd=temp_dir, capture_output=True, text=True, timeout=timeout)
+            # Run pytest (it will automatically discover all test files in the directory)
+            result = subprocess.run([pytest_path, "-v"], cwd=temp_dir, capture_output=True, text=True, timeout=timeout)
             
-            # Smart retry for flaky tests
             if result.returncode != 0:
                 full_log += f"--- Attempt {attempt + 1}/{max_attempts} (Initial Run) ---\n{result.stdout + result.stderr}\n\n"
                 full_log += "⚠️ Initial run failed. Performing one smart retry for potential flakiness...\n"
                 time.sleep(1)
-                result = subprocess.run([pytest_path, "-v", "test_plugin.py"], cwd=temp_dir, capture_output=True, text=True, timeout=timeout)
+                result = subprocess.run([pytest_path, "-v"], cwd=temp_dir, capture_output=True, text=True, timeout=timeout)
                 if result.returncode == 0:
                     full_log += "✅ Passed on smart retry! Likely a transient issue.\n"
             
@@ -57,22 +67,19 @@ def execute_and_debug_code(test_code, repo_code, tenant_code, proposed_test_case
             if "smart retry" not in full_log:
                 full_log += f"--- Attempt {attempt + 1}/{max_attempts} ---\n{attempt_log}\n\n"
             
-            passedTests, failedTests = parse_test_results(attempt_log, proposed_test_cases)
+            passedTests, failedTests = parse_test_results(attempt_log, proposed_test_cases, test_data_map)
             attempt_details.append({"attempt": attempt + 1, "passed": passedTests, "failed": failedTests})
             last_result = {"passedTests": passedTests, "failedTests": failedTests}
 
-            # If tests pass, break the loop
             if result.returncode == 0:
                 full_log += "✅ Tests Passed. Exiting correction loop.\n"
                 break
 
             full_log += f"❌ Tests Failed on Attempt {attempt + 1}. Activating Debugger Agent.\n"
             
-            # If more attempts are left, try to fix
             if attempt < max_attempts - 1:
                 error_log = result.stdout + result.stderr
                 
-                # Triage the error
                 triage_prompt = prompts.get_triage_prompt(error_log)
                 triage_response = vertex_service.generate_content(triage_prompt)
                 triage_result = clean_code_output(triage_response.strip())
@@ -82,7 +89,7 @@ def execute_and_debug_code(test_code, repo_code, tenant_code, proposed_test_case
                     prompt = prompts.get_test_corrector_prompt(current_test_code, error_log)
                     response_text = vertex_service.generate_content(prompt)
                     current_test_code = clean_code_output(response_text)
-                else:  # PLUGIN_ERROR
+                else:
                     previous_attempts_summary = ""
                     if attempt > 0:
                         last_failed_names = [f['name'] for f in attempt_details[-1]['failed']]

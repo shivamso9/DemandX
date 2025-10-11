@@ -1,7 +1,9 @@
 # pluginfactoryapp/routes.py
 
+import os
 import traceback
 from flask import current_app, jsonify, request, render_template
+from werkzeug.utils import secure_filename
 from .services import vertex_service
 from .services.agents import validator_agent, generator_agent, debugger_agent, git_agent
 from .services import file_service
@@ -30,7 +32,10 @@ def validate():
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
     try:
+        filename = secure_filename(file.filename)
+        plugin_name = os.path.splitext(filename)[0].replace('plugin_template_', '')
         result = validator_agent.process_and_validate_spec(file)
+        result['plugin_name'] = plugin_name
         return jsonify(result)
     except (ValueError, KeyError) as e:
         return jsonify({"error": str(e)}), 400
@@ -43,7 +48,6 @@ def plan():
     data = request.get_json()
     if not data or 'parsed_schemas' not in data:
         return jsonify({"error": "Missing required data for Planner Agent."}), 400
-    # Current logic is a passthrough; can be expanded later.
     return jsonify({"status": "PLAN_SUCCESS", "message": "Planner Agent approved. Proceeding to test generation."})
 
 @app.route('/api/generate', methods=['POST'])
@@ -85,9 +89,9 @@ def execute():
             repo_code=data['plugin_repo_code'],
             tenant_code=data['plugin_tenant_code'],
             proposed_test_cases=data.get('proposed_test_cases', []),
-            logic_summary=data.get('logic_summary')
+            logic_summary=data.get('logic_summary'),
+            custom_test_code=data.get('custom_test_code') # <-- ADDED: Pass custom code to agent
         )
-        # Conditionally save on success
         if result.get("success"):
             saved_path = file_service.save_generated_plugin(
                 plugin_name=data.get('plugin_name', 'NewPlugin'),
@@ -96,7 +100,6 @@ def execute():
                 test_code=result['test_code']
             )
             result['saved_path'] = saved_path
-            result['output'] += f"\n✅ Successfully saved plugin files to {saved_path}"
         return jsonify(result)
     except Exception as e:
         traceback.print_exc()
@@ -120,6 +123,29 @@ def save_plugin():
         traceback.print_exc()
         return jsonify({"error": f"An error occurred while saving: {e}"}), 500
 
+@app.route('/api/get_test_plan/<plugin_name>', methods=['GET'])
+def get_test_plan_route(plugin_name):
+    try:
+        result = file_service.get_test_plan(plugin_name)
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/save_test_plan', methods=['POST'])
+def save_test_plan_route():
+    data = request.get_json()
+    plugin_name = data.get('plugin_name')
+    test_plan = data.get('test_plan')
+    if not plugin_name or test_plan is None:
+        return jsonify({"status": "error", "message": "Missing plugin_name or test_plan"}), 400
+    try:
+        result = file_service.save_test_plan(plugin_name, test_plan)
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/push_to_git', methods=['POST'])
 def push_to_git():
     data = request.get_json()
@@ -136,8 +162,31 @@ def push_to_git():
         return jsonify(result)
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 500
-    except ConnectionRefusedError as e: # For merge conflicts
+    except ConnectionRefusedError as e:
         return jsonify({"error": str(e)}), 409
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+    
+    # In pluginfactoryapp/routes.py
+
+# ... (other routes) ...
+
+# ADD THIS NEW ROUTE FOR GENERATING THE TEST FILE PIECE BY PIECE
+@app.route('/api/generate_test_file', methods=['POST'])
+def generate_test_file():
+    data = request.get_json()
+    if not data or 'logic_summary' not in data or 'test_cases' not in data:
+        return jsonify({"error": "Request must include 'logic_summary' and 'test_cases'"}), 400
+    try:
+        # Call a new function in the generator_agent
+        result = generator_agent.generate_test_file_chunked(
+            logic_summary=data['logic_summary'],
+            test_cases=data['test_cases']
+        )
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ... (rest of your routes file) ...

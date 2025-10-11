@@ -1,0 +1,122 @@
+[
+  {
+    "category": "Golden Record Validation",
+    "checked": true,
+    "description": "Validates that a single item in PlanningItemCustomerGroup with a multi-week date range correctly expands into multiple rows in the Sellin Season output, one for each week.",
+    "name": "test_golden_record_single_item"
+  },
+  {
+    "category": "Golden Record Validation",
+    "checked": true,
+    "description": "Tests with multiple, distinct planning items that share the exact same Intro and Disco dates. The output should correctly expand all items for the common week range.",
+    "name": "test_golden_record_multiple_items_same_dates"
+  },
+  {
+    "category": "Golden Record Validation",
+    "checked": true,
+    "description": "Validates the logic with multiple items having different but overlapping date ranges, ensuring each item's weekly expansion is independent and correct.",
+    "name": "test_golden_record_multiple_items_overlapping_dates"
+  },
+  {
+    "category": "Golden Record Validation",
+    "checked": true,
+    "description": "Ensures that a date range correctly identifies and includes all distinct PartialWeekKeys that fall within it.",
+    "name": "test_golden_record_date_range_spans_multiple_week_keys"
+  },
+  {
+    "category": "Golden Record Validation",
+    "checked": true,
+    "description": "Verifies that the final output table contains all specified columns in the correct format and that the 'Sellin Season Week Association' column is always populated with the value 1.",
+    "name": "test_output_schema_and_constant_value"
+  },
+  {
+    "category": "Golden Record Validation",
+    "checked": true,
+    "description": "Tests the scenario where the input PlanningItemCustomerGroup contains fully duplicate rows. The process should treat them as distinct and generate expanded weekly rows for both.",
+    "name": "test_golden_record_duplicate_item_entries"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests the behavior when the PlanningItemCustomerGroup input table is empty. The output Sellin Season table should also be empty.",
+    "name": "test_empty_planning_item_customer_group_input"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests the behavior when the DimTime input table is empty. The output should be empty, as no weeks can be generated, even if PlanningItemCustomerGroup has data.",
+    "name": "test_empty_dim_time_input"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests an item with an Intro Date and Disco Date that are the same. The output should contain exactly one row for that item, corresponding to the week of that single day.",
+    "name": "test_intro_date_equals_disco_date"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests an invalid record where the Intro Date is after the Disco Date. This record should produce zero rows in the output.",
+    "name": "test_intro_date_after_disco_date"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests how the logic handles rows in PlanningItemCustomerGroup with a NULL Intro Date or Disco Date. These rows should be gracefully ignored and not appear in the output.",
+    "name": "test_null_intro_or_disco_date"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests an item whose date range is entirely before or after the dates available in the DimTime table. This item should not generate any rows in the output.",
+    "name": "test_date_range_outside_dim_time_scope"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Verifies that the date range expansion is inclusive, meaning if an Intro or Disco Date is on a given day, the PartialWeekKey for that day is included in the result.",
+    "name": "test_inclusive_date_boundaries"
+  },
+  {
+    "category": "Edge Cases",
+    "checked": true,
+    "description": "Tests an item whose date range only partially overlaps with the dates in DimTime. The output should only contain rows for the weeks within the overlapping period.",
+    "name": "test_date_range_partially_overlaps_dim_time"
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "checked": true,
+    "description": "Tests the system's performance and correctness with an item that has a date range spanning several years, which should generate a large number of weekly rows.",
+    "name": "test_very_long_date_range"
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "checked": true,
+    "description": "Tests the efficiency of identifying unique date ranges when the input contains a large number of different Intro/Disco Date pairs.",
+    "name": "test_many_unique_date_ranges"
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "checked": true,
+    "description": "Ensures that if the input tables have additional columns not mentioned in the logic, they are ignored and do not affect the output or cause errors.",
+    "name": "test_input_with_extra_unspecified_columns"
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "checked": true,
+    "description": "Tests the logic against a DimTime table that has gaps in its DayKey sequence. The expansion should correctly skip the missing days and only use existing PartialWeekKeys.",
+    "name": "test_non_contiguous_dim_time"
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "checked": true,
+    "description": "Validates that a date range that includes a leap day (February 29th) is handled correctly and week generation is not affected.",
+    "name": "test_date_range_spanning_leap_year"
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "checked": true,
+    "description": "Tests an item with valid dates but NULL values for all other planning dimension columns (Version, Channel, PnL, etc.). The output should still generate weekly rows with NULLs for those dimension columns.",
+    "name": "test_all_planning_fields_null"
+  }
+]

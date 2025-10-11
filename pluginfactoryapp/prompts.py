@@ -6,19 +6,24 @@ import io
 def get_validation_prompt(schema_review_string, df_output_string, df_logic_string):
     """Generates the prompt for the Inspector Agent to validate the spec file."""
     return f"""
-    Analyze the provided Excel sheets to create a business logic plan.
+    You are a meticulous data analyst. Your task is to analyze the provided Excel sheets and create a detailed and accurate business logic plan.
 
     **TASK:**
     Generate three sections: PSEUDOCODE, FLOWCHART, and OUTPUT SCHEMA.
 
-    **RULES:**
-    1.  **PSEUDOCODE:** Write in plain English. Do not use SQL keywords.
-        - Start with an "Inputs:" list showing each table and its required columns.
-        - Explicitly trace how inputs are transformed to produce the final outputs.
-        - Reference all output tables by their official 'VariableName' from the 'Output Queries' sheet.
-    2.  **FLOWCHART:** Create a simple, numbered list of the main 5-8 logical steps.
-    3.  **OUTPUT SCHEMA:** Create a JSON object where keys are the 'VariableName' from the 'Output Queries' sheet and values are arrays of column names for that output.
-    4.  **FORMAT:** The entire response MUST start with "VALIDATION_SUCCESS:" and contain the three sections marked with `### SECTION_NAME ###`.
+    **CRITICAL INSTRUCTIONS & RULES:**
+    1.  **PSEUDOCODE SECTION:**
+        * Start with an "Inputs:" list showing each input table along with all the columns/fields.
+        * Describe step-by-step how inputs are transformed into outputs, explicitly listing all input and intermediate tables with the column/field used, detailing each calculation, transformation, or business rule so that a coder or tester can implement and verify it fully and accurately.
+        * Ends with "Inputs:" list showing each output table along with all the columns/fields.
+        
+    2.  **FLOWCHART SECTION:** Create a simple, numbered list of the main 5-8 high-level logical steps.
+
+    3.  **OUTPUT SCHEMA SECTION:** Create a JSON object where keys are the 'VariableName' from the 'Output Queries' sheet and values are arrays of column names for that output.
+
+    4.  **FINAL VERIFICATION:** Before finishing, you must double-check that every column listed in the 'Output Queries Sheet' is present in your 'Column Mapping' section and in your 'OUTPUT SCHEMA' JSON.
+
+    5.  **FORMAT:** The entire response MUST start with "VALIDATION_SUCCESS:" and contain the three sections clearly marked with `### SECTION_NAME ###`.
 
     ---
     **Input Data Schema (from 'Input Queries'):**
