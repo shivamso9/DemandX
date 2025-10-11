@@ -27,3 +27,10 @@ MAX_DEBUG_ATTEMPTS = int(os.getenv("MAX_DEBUG_ATTEMPTS", default=3))
 # The `int()` converts the string value to an integer.
 # The second argument to os.getenv is a default value if the variable isn't found.
 PYTEST_TIMEOUT = int(os.getenv("PYTEST_TIMEOUT", 120))
+
+# In config.py
+GIT_FEATURE_BRANCH = os.getenv("GIT_FEATURE_BRANCH")
+GIT_API_TOKEN = os.getenv("GIT_API_TOKEN")
+GIT_ORGANIZATION = os.getenv("GIT_ORGANIZATION")
+GIT_REPO_NAME = os.getenv("GIT_REPO_NAME")
+GIT_BASE_BRANCH = os.getenv("GIT_BASE_BRANCH")

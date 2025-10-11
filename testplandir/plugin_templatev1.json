@@ -1,0 +1,110 @@
+[
+  {
+    "category": "Golden Record Validation",
+    "name": "test_golden_record_single_transition_group",
+    "description": "Validates the core logic for a single transition group where one template row in AssortmentFinal and AssortmentSellOut expands to create new rows for all other items in the group.",
+    "checked": true
+  },
+  {
+    "category": "Golden Record Validation",
+    "name": "test_golden_record_multiple_independent_groups",
+    "description": "Ensures the process correctly handles multiple, non-overlapping transition groups, processing each expansion independently.",
+    "checked": true
+  },
+  {
+    "category": "Golden Record Validation",
+    "name": "test_anti_join_excludes_existing_items",
+    "description": "Verifies that if an item within a transition group already exists in the input assortment, it is not duplicated in the final output tables (AssortmentFinal_Output, AssortmentSellOut_Output).",
+    "checked": true
+  },
+  {
+    "category": "Golden Record Validation",
+    "name": "test_demand_domain_concatenation_logic",
+    "description": "Checks the correct formation of the 'Planning Demand Domain' column by concatenating Item/Planning Item and Planning Region for AssortmentFinal and AssortmentSellOut respectively.",
+    "checked": true
+  },
+  {
+    "category": "Golden Record Validation",
+    "name": "test_transition_flag_unification_and_deduplication",
+    "description": "Validates that TransitionFlag_Output correctly combines and deduplicates dimension sets from both the AssortmentFinal and AssortmentSellOut expansions using UNION DISTINCT.",
+    "checked": true
+  },
+  {
+    "category": "Golden Record Validation",
+    "name": "test_transition_date_population",
+    "description": "Confirms that the 'Partial Week' column in TransitionFlag_Output is correctly populated with the 'Transition Start Date' from the Date input table for the corresponding Version Name.",
+    "checked": true
+  },
+  {
+    "category": "Golden Record Validation",
+    "name": "test_output_schema_and_static_values",
+    "description": "Verifies that all three output tables conform to the specified schema and that static flag columns (e.g., 'Assortment Final', 'Transition Flag') are correctly set to 1.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_empty_assortment_inputs",
+    "description": "Tests behavior when AssortmentFinal and AssortmentSellOut inputs are empty. Expects empty output tables with no errors.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_no_matching_template_items_in_assortments",
+    "description": "Tests the case where assortment tables have data, but none of the items are defined as a 'Planning Item' in ItemMaster. Expects no expansion and empty outputs.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_item_master_with_no_transition_groups",
+    "description": "Tests behavior when ItemMaster contains no transition logic (e.g., 'Transition Item' is unique for every row). Expects no expansion and empty outputs.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_all_transition_items_already_exist_in_input",
+    "description": "Tests a scenario where all items of a transition group are already present in the input assortments. Expects empty AssortmentFinal_Output and AssortmentSellOut_Output, but a complete TransitionFlag_Output.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_missing_transition_date_for_version",
+    "description": "Tests behavior when the Date table does not contain an entry for the active 'Version Name'. Expects TransitionFlag_Output to be empty or have a null 'Partial Week' value.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_null_values_in_join_keys",
+    "description": "Tests system resilience when join keys in the input tables (e.g., 'Planning Item') are null. Expects these rows to be ignored without crashing the process.",
+    "checked": true
+  },
+  {
+    "category": "Edge Cases",
+    "name": "test_data_for_irrelevant_versions",
+    "description": "Ensures that data belonging to a different 'Version Name' in the input tables is correctly filtered out and ignored by the process.",
+    "checked": true
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "name": "test_large_scale_expansion",
+    "description": "Tests the process with a large number of transition groups and items to ensure performance and scalability of the joins and aggregations.",
+    "checked": true
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "name": "test_complex_dimension_unification",
+    "description": "Creates a scenario where expanded AssortmentFinal and AssortmentSellOut rows share some, but not all, dimension values, verifying that the UNION in Step 5 produces the correct distinct set of intersections.",
+    "checked": true
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "name": "test_disjoint_templates",
+    "description": "Tests a case where AssortmentFinal contains a template for one transition group and AssortmentSellOut contains a template for a completely different group. Both should be processed and unified correctly in TransitionFlag_Output.",
+    "checked": true
+  },
+  {
+    "category": "Extrapolation/New Scenarios",
+    "name": "test_different_templates_within_same_group",
+    "description": "Tests a scenario where AssortmentFinal and AssortmentSellOut both have a template for the same transition group, but the template rows have different dimensional values (e.g., different Planning Account). The expansion should respect each source's template.",
+    "checked": true
+  }
+]
