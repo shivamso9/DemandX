@@ -1,2 +1,3 @@
 .env
 venv/
+pluginfactoryapp/**/__pycache__/
